@@ -26,7 +26,6 @@ import {
 import { ListViewContentFill } from './list-view-content-popover';
 
 const PATTERN_EDITING_GROUPS = [ 'content', 'list' ];
-const TEMPLATE_PART_GROUPS = [ 'default', 'settings', 'advanced' ];
 
 export default function InspectorControlsFill( {
 	children,
@@ -56,17 +55,14 @@ export default function InspectorControlsFill( {
 
 	// During pattern editing:
 	// - All blocks can show pattern editing groups (content, list).
-	// - Template parts can show a settings tab (default, settings, advanced groups).
+	// - Template parts can show all groups.
 	// - Other blocks cannot show a settings tab.
 	if ( context[ mayDisplayPatternEditingControlsKey ] ) {
-		// Template parts are allowed to show a settings tab to allow access to the
-		// 'Design' and 'Advanced' panels.
+		// Template parts are allowed to show all inspector controls to allow access to any style/settings panels.
 		const isTemplatePart = context.name === 'core/template-part';
-		const isTemplatePartGroup = TEMPLATE_PART_GROUPS.includes( group );
 		const isPatternEditingGroup = PATTERN_EDITING_GROUPS.includes( group );
 
-		const canShowGroup =
-			( isTemplatePart && isTemplatePartGroup ) || isPatternEditingGroup;
+		const canShowGroup = isTemplatePart || isPatternEditingGroup;
 
 		if ( ! canShowGroup ) {
 			return null;
