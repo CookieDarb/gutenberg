@@ -79,7 +79,7 @@ const StylesTab = ( {
 					contentClientIds={ contentClientIds }
 				/>
 			) }
-			{ ! isSectionBlock && (
+			{ ( ! isSectionBlock || 'core/template-part' === blockName ) && (
 				<>
 					<InspectorControls.Slot
 						group="color"
