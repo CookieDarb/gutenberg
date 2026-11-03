@@ -10,6 +10,7 @@ import type {
 import PreviewStyles from './preview-styles';
 import Variation from './variations/variation';
 import { GlobalStylesContext } from './context';
+import { extractUserCustomCss } from './extract-user-custom-css';
 import { isVariationWithProperties } from './utils';
 
 interface StyleVariationsContainerProps {
@@ -47,6 +48,24 @@ function StyleVariationsContainer( {
 	);
 
 	const themeVariations = useMemo( () => {
+		const allVariations = variations ?? [];
+
+		// Find the active variation whose CSS was prepended to user styles.
+		const activeVariation = allVariations.find(
+			( variation ) =>
+				variation.styles?.css &&
+				userStyles?.css
+					?.trim()
+					.startsWith( variation.styles.css.trim() )
+		);
+
+		// Only Additional CSS authored by the user should travel between
+		// variations — not CSS that was prepended by the active variation.
+		const preservedUserCss = extractUserCustomCss(
+			userStyles?.css,
+			activeVariation?.styles?.css
+		);
+
 		const withEmptyVariation: StyleVariation[] = [
 			{
 				title: __( 'Default' ),
@@ -67,17 +86,38 @@ function StyleVariationsContainer( {
 					Object.keys( userStyles.blocks ).forEach( ( blockName ) => {
 						// First get any block specific custom CSS from the current user styles and merge with any custom CSS for
 						// that block in the variation.
-						if ( userStyles.blocks?.[ blockName ]?.css ) {
+						const userBlockCss =
+							userStyles.blocks?.[ blockName ]?.css;
+						if ( userBlockCss ) {
+							const activeBlockVariation = allVariations.find(
+								( themeVariation ) =>
+									themeVariation.styles?.blocks?.[ blockName ]
+										?.css &&
+									userBlockCss
+										.trim()
+										.startsWith(
+											themeVariation.styles.blocks[
+												blockName
+											].css.trim()
+										)
+							);
+							const preservedBlockCss = extractUserCustomCss(
+								userBlockCss,
+								activeBlockVariation?.styles?.blocks?.[
+									blockName
+								]?.css
+							);
+
+							if ( ! preservedBlockCss ) {
+								return;
+							}
+
 							const variationBlockStyles =
 								blockStyles[ blockName ] || {};
 							const customCSS = {
 								css: `${
 									blockStyles[ blockName ]?.css || ''
-								} ${
-									userStyles.blocks?.[
-										blockName
-									]?.css?.trim() || ''
-								}`,
+								} ${ preservedBlockCss }`.trim(),
 							};
 							blockStyles[ blockName ] = {
 								...variationBlockStyles,
@@ -88,11 +128,11 @@ function StyleVariationsContainer( {
 				}
 				// Now merge any global custom CSS from current user styles with global custom CSS in the variation.
 				const css =
-					userStyles?.css || variation.styles?.css
+					preservedUserCss || variation.styles?.css
 						? {
 								css: `${ variation.styles?.css || '' } ${
-									userStyles?.css || ''
-								}`,
+									preservedUserCss || ''
+								}`.trim(),
 							}
 						: {};
 
@@ -113,7 +153,12 @@ function StyleVariationsContainer( {
 				};
 			} ),
 		];
-	}, [ fullStyleVariations, userStyles?.blocks, userStyles?.css ] );
+	}, [
+		fullStyleVariations,
+		userStyles?.blocks,
+		userStyles?.css,
+		variations,
+	] );
 
 	if ( ! fullStyleVariations || fullStyleVariations.length < 1 ) {
 		return null;
